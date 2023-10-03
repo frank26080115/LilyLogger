@@ -6,16 +6,16 @@
 #include <TFT_eSPI.h>
 #include <fadc.h>
 #include <S3Servo.h>
+#include <RoachCmdLine.h>
 
 TaskHandle_t Task1;
 void Task1code(void* pvParameters);
 
 extern TFT_eSPI tft;
 extern TFT_eSprite sprite;
-
-CurrentSensorIna219 ina = CurrentSensorIna219((gpio_num_t)PIN_IIC_SDA, (gpio_num_t)PIN_IIC_SCL);
-
+CurrentSensorIna219* ina = NULL;
 extern S3Servo servo;
+extern RoachCmdLine cmdline;
 
 void setup()
 {
@@ -68,6 +68,7 @@ void setup()
     }
 
     Serial.begin(115200); // this should be using USB CDC
+    nvmsettings_init();
 
     gui_bootmsg("Hello!");
 
@@ -83,6 +84,13 @@ void setup()
                     &Task1,      /* Task handle to keep track of created task */
                     ((xPortGetCoreID() == 0) ? 1 : 0) /* pin task to core */ 
                     );
+
+    // wait for sensor initialization
+    while (ina == NULL) {
+        yield();
+    }
+    tacho_init();
+    rxmon_init();
 }
 
 uint32_t last_tick_time = 0; // keep frame rate
@@ -104,15 +112,17 @@ void loop()
         }
         should_run = true;
     }
+    rxmon_task();
     if (should_run == false) {
-        // do nothing, let other threads run
+        cmdline.task();
         vTaskDelay(0);
         return;
     }
 
     // gather data
-    current_sensor_results_t sensor_results = ina.get(true);
+    current_sensor_results_t sensor_results = ina->get(true);
     tacho_data_t tacho_data = tacho_100msTask();
+    uint32_t becFault = rxmon_hasBecFault();
 
     plot_data_t pltdata;
     log_data_t logdata;
@@ -129,6 +139,7 @@ void loop()
     pltdata.speed_max = tacho_data.rpm_max;
     pltdata.speed_min = tacho_data.rpm_min;
     #endif
+    pltdata.bec_fault = becFault > 0;
     plot_push(&pltdata);
 
     // convert to human units for data logging and display
@@ -143,6 +154,7 @@ void loop()
     logdata.rpm_max     = tacho_data.rpm_max;
     logdata.rpm_min     = tacho_data.rpm_min;
     logdata.servo_pwm   = servotester_get();
+    logdata.bec_fault   = becFault;
 
     sprite.fillSprite(TFT_BLACK);
     plot_draw();
@@ -183,6 +195,41 @@ void loop()
     sprintf(strbuf, "Servo: %u us", logdata.servo_pwm);
     sprite.drawString(strbuf, x_margin, y);
 
+    x_margin += gui_screenWidth / 2;
+    y = 3;
+
+    if (becFault) {
+        sprite.setTextColor(TFT_RED, TFT_BLACK, true);
+        float dt = now - becFault;
+        dt /= 1000;
+        sprintf(strbuf, "BEC FAULT %0.1f s ago", dt);
+        sprite.drawString(strbuf, x_margin, y);
+        y += font_height + line_spacing;
+    }
+    uint32_t pulsePeriod, pulseWidth;
+    rxmon_pulseGet(&pulsePeriod, &pulseWidth);
+    if (pulsePeriod > 0)
+    {
+        if (pulsePeriod >= 5 && pulsePeriod <= 25 && pulseWidth >= 500 && pulseWidth <= 2500) {
+            sprite.setTextColor(TFT_WHITE, TFT_BLACK, true);
+        }
+        else {
+            sprite.setTextColor(TFT_RED, TFT_BLACK, true);
+        }
+
+        if (pulsePeriod >= 5 && pulsePeriod <= 25) {
+            sprintf(strbuf, "RX: %u/%u", pulseWidth, pulsePeriod * 1000);
+        }
+        else if (pulsePeriod >= 500) {
+            sprintf(strbuf, "RX: TIMEOUT");
+        }
+        else {
+            sprintf(strbuf, "RX: %u", pulsePeriod * 1000);
+        }
+        sprite.drawString(strbuf, x_margin, y);
+        y += font_height + line_spacing;
+    }
+
     // show to serial port if available
     Serial.printf("%u, ", logdata.timestamp);
     Serial.printf("%u, %u, %u "
@@ -207,7 +254,12 @@ void loop()
     // button 2 press changes the font
     if (digitalRead(PIN_BUTTON_2) == LOW && btnlatch_2 == false) {
         btnlatch_2 = true;
-        disp_font = (disp_font + 1) % 5;
+        if (becFault) {
+            rxmon_clrBecFault();
+        }
+        else {
+            disp_font = (disp_font + 1) % 5;
+        }
     }
     else if (digitalRead(PIN_BUTTON_2) != LOW) {
         btnlatch_2 = false;
@@ -230,11 +282,12 @@ void loop()
 
 void Task1code(void* pvParameters)
 {
-    ina.begin();
+    ina = new CurrentSensorIna219((gpio_num_t)PIN_IIC_SDA, (gpio_num_t)PIN_IIC_SCL, nvmsettings.ina_cfg);
+    ina->begin();
     servotester_init();
     while (true)
     {
-        ina.task();         // this is blocking
+        ina->task();         // this is blocking
         servotester_task(); // this is none blocking, very quick and low priority
         vTaskDelay(0);
     }

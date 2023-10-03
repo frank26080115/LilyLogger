@@ -18,7 +18,13 @@ bool datalog_openNextFile()
     char fname[32];
     log_filename_i++;
     for (; ; log_filename_i++) {
-        sprintf(fname, "/log-%05u.bin", log_filename_i);
+        sprintf(fname, "/log-%05u."
+            #ifdef DATALOG_USE_TSV
+                "tsv"
+            #else
+                "bin"
+            #endif
+        , log_filename_i);
         File check_fexists = FFat.open(fname);
         if (!check_fexists) {
             check_fexists.close();
@@ -62,7 +68,28 @@ bool datalog_isOpen()
 
 void datalog_write(log_data_t* data, bool flush)
 {
+    #ifdef DATALOG_USE_TSV
+    log_file.printf("%u"
+        "\t%u\t%u\t%u"
+        "\t%u\t%u\t%u"
+        "\t%u\t%u\t%u"
+        "\t%u\t%u\r\n"
+        , data->timestamp
+        , data->current_avg
+        , data->current_max
+        , data->current_min
+        , data->voltage_avg
+        , data->voltage_max
+        , data->voltage_min
+        , data->rpm_avg
+        , data->rpm_max
+        , data->rpm_min
+        , data->servo_pwm
+        , data->bec_fault
+    );
+    #else
     log_file.write((const uint8_t*)data, sizeof(log_data_t));
+    #endif
     if (flush) {
         log_file.flush();
     }

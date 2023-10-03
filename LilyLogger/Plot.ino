@@ -41,7 +41,7 @@ void plot_push(plot_data_t* x)
 #ifdef ENABLE_PLOT_RPM
 uint16_t plot_speed_to_pixels(int32_t x)
 {
-    return tft.height() - map_rounded(x, 0, plot_speed_max, 0, tft.height() - 1, true);
+    return gui_screenHeight - map_rounded(x, 0, plot_speed_max, 0, gui_screenHeight - 1, true);
 }
 #endif
 
@@ -72,5 +72,8 @@ void plot_draw()
         sprite.drawLine(x, plot_speed_to_pixels(ptr1->speed_avg), x2, plot_speed_to_pixels(ptr2->speed_avg), TFT_YELLOW);
         sprite.drawLine(x, plot_speed_to_pixels(ptr1->speed_max), x2, plot_speed_to_pixels(ptr2->speed_max), TFT_YELLOW);
         #endif
+        if (ptr1->bec_fault) {
+            sprite.drawLine(x, gui_screenHeight - 1, x, gui_screenHeight / 2, TFT_ORANGE);
+        }
     }
 }

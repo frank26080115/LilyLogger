@@ -22,17 +22,19 @@ typedef struct
 }
 current_sensor_results_t;
 
+#define INA219_DEFAULT_CFG     (0                                        \
+                               | INA219_CONFIG_BVOLTAGERANGE_16V         \
+                               | INA219_CONFIG_GAIN_2_80MV               \
+                               | INA219_CONFIG_BADCRES_12BIT             \
+                               | INA219_CONFIG_SADCRES_12BIT_1S_532US    \
+                               | INA219_CONFIG_MODE_SANDBVOLT_CONTINUOUS \
+                               )                                         \
+
+
 class CurrentSensorIna219
 {
     public:
-        CurrentSensorIna219(gpio_num_t _pin_sda, gpio_num_t _pin_scl, uint16_t _cfg_reg
-            = 0
-            | INA219_CONFIG_BVOLTAGERANGE_16V
-            | INA219_CONFIG_GAIN_2_80MV
-            | INA219_CONFIG_BADCRES_12BIT
-            | INA219_CONFIG_SADCRES_12BIT_1S_532US
-            | INA219_CONFIG_MODE_SANDBVOLT_CONTINUOUS
-            , uint8_t _i2c_num = 0
+        CurrentSensorIna219(gpio_num_t _pin_sda, gpio_num_t _pin_scl, uint16_t _cfg_reg = INA219_DEFAULT_CFG, uint8_t _i2c_num = 0
         ) {
             pin_sda = _pin_sda;
             pin_scl = _pin_scl;

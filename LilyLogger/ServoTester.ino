@@ -21,7 +21,8 @@ void servotester_task()
 {
     if (fadcBusy() == false) {
         uint16_t x = fadcApply(fadcResult() << FADC_SHIFT);
-        servo_us = map_rounded(x, 0, 4095, 1000, 2000, true);
+        int deadzone = 32;
+        servo_us = map_rounded(x, deadzone, 4095 - deadzone, 1000, 2000, true);
         servo.writeMicroseconds(servo_us);
         fadcStart(adc_chan); // do the next read
     }

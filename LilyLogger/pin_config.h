@@ -29,6 +29,8 @@
 #define PIN_TOUCH_INT                16
 #define PIN_TOUCH_RES                21
 
-#define PIN_TACHO                    1
-#define PIN_SERVO_PWM                2
-#define PIN_SERVO_POT                3
+#define PIN_TACHO                    11
+#define PIN_SERVO_PWM                12
+#define PIN_SERVO_POT                1
+#define PIN_RXMON_BEC                2
+#define PIN_RXMON_PULSE              13

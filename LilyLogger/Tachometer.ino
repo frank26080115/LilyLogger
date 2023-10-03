@@ -7,8 +7,8 @@ void IRAM_ATTR tacho_intr();
 void tacho_init()
 {
     tacho_mutex = xSemaphoreCreateMutex();
-    pinMode(PIN_TACHO, INPUT_PULLDOWN);
-    attachInterrupt(PIN_TACHO, tacho_intr, RISING);
+    pinMode(PIN_TACHO, (nvmsettings.tacho_edge == FALLING) ? INPUT_PULLUP : INPUT_PULLDOWN);
+    attachInterrupt(PIN_TACHO, tacho_intr, nvmsettings.tacho_edge);
 }
 
 volatile uint32_t tacho_last_time = 0;
@@ -70,6 +70,7 @@ tacho_data_t tacho_100msTask()
 
     uint32_t now = millis();
     if ((now - tacho_last_time_ms) > 1000) {
+        // timeout waiting for pulse
         r.rpm_avg = 0;
     }
     else {

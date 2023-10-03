@@ -26,6 +26,7 @@ typedef struct
     uint16_t speed_avg;
     uint16_t speed_min;
     #endif
+    bool bec_fault;
 }
 plot_data_t;
 
@@ -42,10 +43,27 @@ typedef struct
     uint32_t rpm_max;
     uint32_t rpm_min;
     uint32_t servo_pwm;
+    uint32_t bec_fault;
 }
 log_data_t;
 
+typedef struct
+{
+    int32_t ina_cfg;
+    int32_t current_multi;
+    int32_t current_div;
+    int32_t current_pix_scale;
+    int32_t voltage_pix_scale;
+    int32_t voltage_mv_scale;
+    int32_t tacho_edge;
+}
+nvmsettings_t;
+
+extern nvmsettings_t nvmsettings;
+extern uint16_t gui_screenWidth, gui_screenHeight;
+
 extern void usbmsc_init();
+extern void nvmsettings_init();
 extern void gui_init();
 extern void gui_bootmsg(const char*);
 extern void tacho_init();
@@ -60,6 +78,11 @@ extern void datalog_write(log_data_t* data, bool flush);
 extern void servotester_init();
 extern void servotester_task();
 extern uint32_t servotester_get();
+extern void rxmon_init();
+extern void rxmon_task();
+extern void rxmon_pulseGet(uint32_t* period, uint32_t* width);
+extern uint32_t rxmon_hasBecFault();
+extern void rxmon_clrBecFault();
 
 extern int32_t map_rounded(int32_t x, int32_t in_min, int32_t in_max, int32_t out_min, int32_t out_max, bool limit);
 extern int32_t div_rounded(const int n, const int d);

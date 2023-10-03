@@ -32,6 +32,8 @@ lcd_cmd_t lcd_st7789v[] = {
 };
 #endif
 
+uint16_t gui_screenWidth, gui_screenHeight;
+
 void gui_init()
 {
     tft.init();
@@ -54,8 +56,10 @@ void gui_init()
     tft.fillScreen(TFT_BLACK);
     tft.setTextColor(TFT_GREEN, TFT_BLACK);
     tft.setTextFont(2);
+    gui_screenWidth = tft.width();
+    gui_screenHeight = tft.height();
     sprite.setColorDepth(8);
-    sprite.createSprite(tft.width(), tft.height());
+    sprite.createSprite(gui_screenWidth, gui_screenHeight);
     gui_mutex = xSemaphoreCreateMutex();
 }
 
